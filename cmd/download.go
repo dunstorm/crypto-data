@@ -81,22 +81,12 @@ var downloadCmd = &cobra.Command{
 		startTimestamp := parseDate(start)
 		endTimestamp := parseDate(end)
 
+		// display different of start and end
+		fmt.Printf("Start: %s, End: %s, Data: %d days\n", start, end, (endTimestamp-startTimestamp)/(1000*60*60*24))
+
 		// download data
 		fmt.Println("Downloading data...")
 
-		// create binance client
-		client := binance.NewClient(config.BinanceAPIKey, config.BinanceAPISecret)
-		// get historical data
-		klines, err := client.NewKlinesService().Symbol(ticker).Interval(interval).StartTime(startTimestamp).EndTime(endTimestamp).Do(context.Background())
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		// display different of start and end
-		fmt.Printf("Start: %s, End: %s, Data: %d days", start, end, (endTimestamp-startTimestamp)/(1000*60*60*24))
-
-		// save data to csv
-		fmt.Println("Saving data to csv...")
 		// create csv
 		f, err := os.Create(output)
 		if err != nil {
@@ -108,8 +98,30 @@ var downloadCmd = &cobra.Command{
 		csvWriter := csv.NewWriter(f)
 		// write header in title case
 		csvWriter.Write([]string{"Date", "Open", "High", "Low", "Close", "Volume", "CloseTime", "QuoteAssetVolume", "TakerBuyBaseAssetVolume", "TakerBuyQuoteAssetVolume"})
-		data := klinesToRecords(klines)
+
+		// create binance client
+		client := binance.NewClient(config.BinanceAPIKey, config.BinanceAPISecret)
+		// get historical data
+		klines, err := client.NewKlinesService().Symbol(ticker).Interval(interval).StartTime(startTimestamp).EndTime(endTimestamp).Do(context.Background())
+		if err != nil {
+			panic(err)
+		}
+
+		var data [][]string
+		data = klinesToRecords(klines)
 		csvWriter.WriteAll(data)
+
+		fmt.Printf("Upto: %s\n", data[len(data)-1][0])
+
+		for klines[len(klines)-1].CloseTime < endTimestamp {
+			klines, err = client.NewKlinesService().Symbol(ticker).Interval(interval).StartTime(klines[len(klines)-1].CloseTime).EndTime(endTimestamp).Do(context.Background())
+			if err != nil {
+				panic(err)
+			}
+			data = klinesToRecords(klines)
+			fmt.Printf("Upto: %s\n", data[len(data)-1][0])
+			csvWriter.WriteAll(data)
+		}
 
 		fmt.Println("Done! Data saved to", output)
 	},
