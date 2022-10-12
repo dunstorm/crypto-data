@@ -14,6 +14,7 @@ import (
 
 	"github.com/adshao/go-binance/v2"
 	"github.com/dunstorm/crypto-data/database"
+	progressbar "github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -113,13 +114,24 @@ var downloadCmd = &cobra.Command{
 
 		fmt.Printf("Upto: %s\n", data[len(data)-1][0])
 
+		// days total
+		totalDays := (endTimestamp - startTimestamp) / (1000 * 60 * 60 * 24)
+		// days downloaded
+		downloadedDays := (klines[len(klines)-1].CloseTime - startTimestamp) / (1000 * 60 * 60 * 24)
+
+		bar := progressbar.Default(totalDays, "")
+		bar.Set(int(downloadedDays))
+
+		// progress bar
 		for klines[len(klines)-1].CloseTime < endTimestamp {
 			klines, err = client.NewKlinesService().Symbol(ticker).Interval(interval).StartTime(klines[len(klines)-1].CloseTime).EndTime(endTimestamp).Do(context.Background())
 			if err != nil {
 				panic(err)
 			}
 			data = klinesToRecords(klines)
-			fmt.Printf("Upto: %s\n", data[len(data)-1][0])
+			downloadedDays = (klines[len(klines)-1].CloseTime - startTimestamp) / (1000 * 60 * 60 * 24)
+			// show download progress
+			bar.Set(int(downloadedDays))
 			csvWriter.WriteAll(data)
 		}
 
