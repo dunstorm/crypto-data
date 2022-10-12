@@ -3,6 +3,7 @@ package database
 import (
 	"encoding/json"
 	"os"
+	"path"
 )
 
 type Config struct {
@@ -13,8 +14,25 @@ type Config struct {
 	BinanceAPISecret string
 }
 
+func getConfigPath() string {
+	// ~/.crypto-data/db.json
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+	return path.Join(homeDir, ".crypto-data", "db.json")
+}
+
 func getConfig() (Config, error) {
-	data, err := os.ReadFile("database/db.json")
+	configPath := getConfigPath()
+	// if file does not exist create it
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		_, err := os.Create(configPath)
+		if err != nil {
+			return Config{}, err
+		}
+	}
+	data, err := os.ReadFile(configPath)
 	var config Config
 	if err == nil {
 		json.Unmarshal(data, &config)
