@@ -27,6 +27,8 @@ func getConfig() (Config, error) {
 	configPath := getConfigPath()
 	// if file does not exist create it
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		// create full path
+		os.MkdirAll(path.Dir(configPath), 0755)
 		_, err := os.Create(configPath)
 		if err != nil {
 			return Config{}, err
@@ -42,8 +44,9 @@ func getConfig() (Config, error) {
 
 func updateConfig(data Config) {
 	bytes, err := json.Marshal(data)
+	configPath := getConfigPath()
 	if err == nil {
-		os.WriteFile("database/db.json", bytes, 0644)
+		os.WriteFile(configPath, bytes, 0644)
 	} else {
 		panic(err)
 	}
